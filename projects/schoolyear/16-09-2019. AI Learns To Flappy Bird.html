@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>AI Learns To Flappy Bird Win</title>
+		<style>
+			html {
+				background-color: #000;
+				width: 100vw;
+				height: 100vh;
+				display: table;
+			}
+			body {
+				display: table-cell;
+				text-align: center;
+				vertical-align: middle;
+			}
+			canvas {
+				background-color: #333;
+			}
+		</style>
+		<script>
+			window.addEventListener('error', function(err) {
+				alert(
+					err.message + '\n\n\t' + err.lineno + '.' + err.colno
+				);
+			});
+
+			window.addEventListener('DOMContentLoaded', function() {
+				'use strict';
+				var Bird, Pipe;
+				var birds, pipes, canvas, context, x, gen;
+				var init, draw, frameIdx, random, _r, r, mutation;
+
+				r = Array.from({ 'length': 512 }, function() {
+					return Math.random();
+				}), _r = 0, random = () => r[++ _r % r.length];
+
+				init = function() {
+					birds = Array.from({ 'length': 256 }, function() {
+						return (new Bird(canvas.width / 8, canvas.height / 3));
+					}), pipes = Array.from({ 'length': 3 }, function(u, i) {
+						return (new Pipe((i + 1) * canvas.width / 3, canvas.height));
+					});
+
+					frameIdx = 0, gen = 0;
+
+					mutation = 2e-2;
+
+					draw();
+				};
+
+				draw = function() {
+					var idx, i, best;
+
+					++frameIdx;
+
+					context.clearRect(0, 0, canvas.width, canvas.height);
+
+					for(i = x ? 384 : 4; -- i; ) {
+						for(idx = 0; idx < Math.max(pipes.length, birds.length); ++idx) {
+							// Don't bother complaining, I know my code is shit
+							// Eventually I will bother to rewrite this damned thing
+							if(idx < birds.length) birds[idx].tick(pipes);
+							if(idx < pipes.length) pipes[idx].tick();
+						}
+					}
+
+					// Ok this is fucking inefficient, but I think it looks
+					// better than two fucking for loops...
+					for(idx = 0; idx < Math.max(pipes.length, birds.length); ++idx) {
+					    if(idx < pipes.length) pipes[idx].draw(canvas, context, frameIdx);
+					    if(idx < birds.length) birds[idx].draw(canvas, context, frameIdx);
+					}
+
+					for(i = 0, idx = 0; idx < birds.length; ++idx) {
+						i += birds[idx].dead;
+					}
+
+					if(i === birds.length) {
+						_r = 0, best = birds.sort(function(a, b) {
+							return (b.fitness() - a.fitness());
+						}).slice(0, 10);
+
+						birds = Array.from({ 'length': birds.length }, function(b, i) {
+							return i < best.length ?
+								best[i].clone() :
+								best[i % (best.length)].mutate(mutation);
+						}), pipes = Array.from({ 'length': 3 }, function(u, i) {
+							return (new Pipe((i + 1) * canvas.width / 3, canvas.height));
+						}), frameIdx = 0;
+
+						++gen;
+						mutation *= 0.99995;
+					}
+
+					context.fillStyle = '#999';
+					context.fillRect(8, 8, 200, 96);
+					context.fillRect(canvas.width - 208, 8, 200, 96);
+					context.font = '24px monospace';
+					context.fillStyle = '#000';
+					context.fillText('Dead: ' + String(i).padStart(3, '0') + '/' + birds.length, 16, 28);
+					context.fillText('Gen#: ' + String(gen).padStart(7, '0'), 16, 60);
+					context.fillText('FrNo: ' + String(frameIdx).padStart(7, '0'), 16, 92);
+
+					context.fillText('%rand: ' + String(mutation.toFixed(4)), canvas.width - 200, 28);
+
+					requestAnimationFrame(draw);
+				};
+
+				Bird = function(x, y) {
+					this.pos = [ x, y ];
+					this.ogP = [ x, y ];
+					this.vel = [ 1, 0 ];
+
+					this.f = 0;
+
+					this.dead = false;
+
+					this.smart = Array.from({ 'length': 1024 }, function() {
+						return Math.random();
+					});
+				}, Bird.prototype = {
+					'tick': function(pipes) {
+						var idx;
+
+						if(this.dead) return;
+
+						for(idx = 0; idx < pipes.length; ++idx) {
+							this.dead = this.dead || pipes[idx].check([ this.ogP[0], this.pos[1] ]);
+						}
+						this.dead = this.dead || this.pos[1] > canvas.height || this.pos[1] < 0;
+
+						this.pos[0] += this.vel[0];
+						this.pos[1] += this.vel[1];
+
+						this.vel[1] += 0.1;
+						if(++this.f % 10 === 0) {
+							if(this.smart[this.f / 10 % this.smart.length] > 0.8) {
+								this.vel[1] = -5;
+							}
+						};
+					},
+					'draw': function(c, ctx, f) {
+						if(this.dead) return;
+
+						ctx.fillStyle = '#ffff00ff';
+						ctx.fillRect(this.ogP[0] - 12, this.pos[1] - 12, 24, 24);
+					},
+					'fitness': function() {
+						return this.pos[0];
+					},
+					'mutate': function(o) {
+						var bird, idx;
+
+						bird = this.clone();
+
+						for(idx = 0; idx < bird.smart.length; ++idx) {
+							if(Math.random() > (o || 1e-2)) continue;
+							bird.smart[idx] = Math.random();
+						}
+
+						return bird;
+					},
+					'clone': function() {
+						var bird;
+
+						bird = new Bird(this.ogP[0], this.ogP[1]);
+						bird.smart = Array.from(this.smart);
+
+						return bird;
+					}
+				};
+
+				Pipe = function(x, h) {
+					this.w = 24;
+					this.gap = 120;
+
+					this.pos = [ x, random() * (h - this.gap * 2) + this.gap ];
+					this.vel = [ -0.75 ];
+
+					this.h = h;
+				}, Pipe.prototype = {
+					'tick': function() {
+						this.pos[0] += this.vel[0];
+						if(this.pos[0] < 0) {
+							this.pos = [ canvas.width, (0.125 + random() * 0.75) * this.h ];
+						}
+					},
+					'draw': function(c, ctx, f) {
+						ctx.fillStyle = '#00ff00ff';
+						ctx.fillRect(this.pos[0] - this.w / 2, 0, this.w, this.pos[1] - this.gap);
+						ctx.fillRect(this.pos[0] - this.w / 2, this.pos[1] + this.gap, this.w, c.height - this.pos[1] - this.gap);
+					},
+					'check': function(p) {
+						return (
+							Math.abs(p[0] - this.pos[0]) < this.w * 0.5 &&
+							Math.abs(p[1] - this.pos[1]) > this.gap
+						);
+					}
+				};
+
+				canvas = document.querySelector('canvas');
+				context = canvas.getContext('2d');
+
+				context.fillRect(0, 0, 120, 120);
+
+				x = true;
+				canvas.addEventListener('click', function() { x=!x; });
+
+				init();
+			});
+		</script>
+	</head>
+	<body>
+		<!--
+			Since apparently I can not remember shit for more than 12 seconds, note to self
+			- MAKE FLAPPY BIRD YOU DUMBFUCK
+			- REMEMBER HOW TO AI YOU SHIT
+			- APPLY THE AI TO THE BIRD GUY
+			- AND FUCKING LET IT RUN
+			- IF YOU FORGET ANY OF THESE STEPS YOU FUCKING BELONG IN HELL, FUTURE ME
+			- DONT WORRY PAST ME DOES TOO, BUT YOU WILL MORE SO, SO TAKE IT SERIOUSLY
+			ok thanks
+		-->
+		<canvas width='960' height='640'></canvas>
+	</body>
+</html>

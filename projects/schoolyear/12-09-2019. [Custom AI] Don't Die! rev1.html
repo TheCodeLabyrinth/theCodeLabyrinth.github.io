@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>AI Learns To Live</title>
+		<style>
+			html {
+				background-color: #000;
+				color: #3F0;
+				display: table;
+				width: 100vw; height: 100vh;
+				overflow: hidden;
+			}
+			body {
+				display: table-cell;
+				text-align: center;
+				vertical-align: middle;
+			}
+			canvas {
+				background-color: #ccc;
+				max-width: 100vw; max-height: 100vh;
+			}
+		</style>
+		<script>
+			// kill me now
+			window.addEventListener('error', function(err) {
+				alert(err.message + '\n\t' + err.lineno + '.' + err.colno + '\n\t' + err.filename);
+			});
+			window.addEventListener('DOMContentLoaded', function() {
+				'use strict';
+				var Thing, Wall, Destination, Game;
+				var c, ctx, game, speed, variation;
+
+				speed = 1;
+				variation = 1e-2;
+
+				window.addEventListener('keydown', function(evt) {
+					switch(String(evt.key).toLowerCase()) {
+						case 'arrowright': case 'd':
+							++speed;
+							break;
+						case 'arrowleft': case 'a':
+							--speed;
+							break;
+						case 'arrowup': case 'w':
+							variation *= 10;
+							break;
+						case 'arrowdown': case 's':
+							variation /= 10;
+							break;
+						case 'j':
+							-- game.end.x;
+							break;
+						case 'l':
+							++ game.end.x;
+							break;
+						case 'i':
+							-- game.end.y;
+							break;
+						case 'k':
+							++ game.end.y;
+							break;
+					}
+				});
+
+				Wall = function(x, y, w, h) {
+					this.x = x;
+					this.y = y;
+					this.w = w;
+					this.h = h;
+				}, Wall.prototype = {
+					'render': function(c) {
+						c.fillStyle = '#090';
+						c.fillRect(this.x, this.y, this.w, this.h);
+						c.strokeRect(this.x, this.y, this.w, this.h);
+					},
+					'check': function(x, y, rad) {
+						return (x + rad >= this.x && x - rad <= this.x + this.w && y + rad >= this.y && y - rad <= this.y + this.h);
+					}
+				};
+
+				Thing = function(x, y) {
+					this.ogX = x;
+					this.ogY = y;
+
+					this.r = 4;
+
+					this.dead = false;
+
+					this.x = x;
+					this.y = y;
+
+					this.path = Array.from({ 'length': 768 }, function() {
+						var num;
+
+						num = (2 * Math.random() - 1) * Math.PI;
+
+						return [ Math.cos(num), Math.sin(num) ];
+					});
+
+					this.a = this.path[0];
+					this.v = [ 0, 0 ];
+
+					this.f = 0;
+				}, Thing.prototype = {
+					'render': function(c) {
+						c.beginPath();
+						c.fillStyle = '#900';
+						c.strokeStyle = '#000';
+						c.arc(this.x, this.y, this.r, 0, Math.PI * 2, false);
+						c.closePath();
+						c.fill();
+						c.stroke();
+					},
+					'tick': function(w, h, walls) {
+						var idx, m;
+
+						if(this.dead) return;
+
+						this.a = this.path[++this.f % this.path.length];
+
+						m = 32;
+
+						if(this.v[0] > +m) this.v[0] = +m;
+						if(this.v[0] < -m) this.v[0] = -m;
+						if(this.v[1] > +m) this.v[1] = +m;
+						if(this.v[1] < -m) this.v[1] = -m;
+
+						this.v[0] += this.a[0];
+						this.v[1] += this.a[1];
+						this.x += this.v[0];
+						this.y += this.v[1];
+
+						if(this.x > w - this.r || this.x < this.r || this.y > h - this.r || this.y < this.r) this.dead = true;
+
+						for(idx = 0; idx < walls.length; ++idx) {
+							if(walls[idx].check(this.x, this.y, this.r / 2)) {
+								this.dead = true;
+							}
+						}
+					},
+					'clone': function() {
+						var idx, ret;
+
+						ret = new Thing(this.ogX, this.ogY);
+
+						for(idx = 0; idx < this.path.length; ++idx) {
+							ret.path[idx] = this.path[idx];
+						}
+
+						return ret;
+					},
+					'mutate': function() {
+						var idx, n, ret, num;
+
+						ret = this.clone();
+
+						for(idx = 0; idx < this.path.length; ++idx) {
+							if(Math.random() < variation) {
+								num = (2 * Math.random() - 1) * Math.PI;
+								ret.path[idx] = [ Math.cos(num), Math.sin(num) ];
+							}
+						}
+
+						ret.a = ret.path[0];
+
+						return ret;
+					},
+					'fitness': function(endPoint) {
+						var endX, endY;
+
+						endX = endPoint.x + endPoint.w / 2;
+						endY = endPoint.y + endPoint.h / 2;
+
+						return (Math.pow(this.x - endX, 2) + Math.pow(this.y - endY, 2)) / this.f;
+					}
+				};
+
+				Game = function(w, h) {
+					var idx, num, t;
+
+					this.canvas = null;
+					this.context = null;
+
+					this.generation = 0;
+					this.avgFitness = 0;
+					this.bestFitness = 0;
+
+					this.wid = w;
+					this.hei = h;
+
+					this.end = new Wall(48, h - 80, 64, 64);
+
+					this.entities = Array(512);
+					this.walls = Array(5);
+
+					for(idx = 0; idx < this.entities.length; ++idx) {
+						this.entities[idx] = new Thing(w * 0.9, h * 0.1);
+					}
+
+					num = h * 0.55; t = 40;
+
+					for(idx = 0; idx < this.walls.length - 1; ++idx) {
+						this.walls[idx] = new Wall((idx + 1) * w / (this.walls.length) - t / 2, idx % 2 === 0 ? 0 : (h - num), t, num);
+					}
+
+					this.walls[idx] = this.end;
+				}, Game.prototype = {
+					'setCanvas': function(c) { this.canvas = c; },
+					'setContext': function(c) { this.context = c; },
+					'render': function() {
+						var idx;
+
+						if(this.canvas.width !== this.wid) this.canvas.width = this.wid;
+						if(this.canvas.height !== this.hei) this.canvas.height = this.hei;
+
+						this.context.clearRect(0, 0, this.wid, this.hei);
+
+						for(idx = 0; idx < this.walls.length; ++idx) {
+							this.walls[idx].render(this.context);
+						}
+
+						this.end.render(this.context);
+
+						for(idx = 0; idx < this.entities.length; ++idx) {
+							this.entities[idx].render(this.context);
+						}
+
+						this.context.strokeStyle = '#000';
+						this.context.fillStyle = '#9993';
+						this.context.strokeRect(10, 14, 240, 100);
+						this.context.fillRect(10, 14, 240, 100);
+
+						this.context.fillStyle = '#000';
+						this.context.font = '16px monospace';
+						this.context.fillText('Generation: '.padStart(14, ' ') + String(this.generation).padStart(9, ' '), 16, 32);
+						this.context.fillText('Variation: '.padStart(14, ' ') + String('1e' + Math.floor(Math.log10(variation))).padStart(9, ' '), 16, 48);
+						this.context.fillText('Speed: '.padStart(14, ' ') + String(Math.floor(speed)).padStart(9, ' '), 16, 64);
+						this.context.fillText('Best Fitness: ' + String(this.bestFitness).padStart(9, ' '), 16, 80);
+						this.context.fillText('Avg. Fitness: ' + String(this.avgFitness).padStart(9, ' '), 16, 96);
+
+						for(idx = 0; idx < speed; ++idx) this.tick();
+
+						requestAnimationFrame(this.render.bind(this));
+					},
+					'tick': function() {
+						var dead, idx, fit;
+
+						dead = 0;
+
+						for(idx = 0; idx < this.entities.length; ++idx) {
+							if(this.entities[idx].dead) ++dead;
+							this.entities[idx].tick(this.wid, this.hei, this.walls);
+						}
+
+						if(dead === this.entities.length) {
+							++ this.generation;
+
+							this.avgFitness = 0;
+							this.bestFitness = 0;
+
+							for(idx = 0; idx < this.entities.length; ++idx) {
+								fit = this.entities[idx].fitness(this.end);
+								this.avgFitness += fit;
+
+								if(fit > this.bestFitness) {
+									this.bestFitness = fit;
+								}
+							}
+
+							this.bestFitness = Math.floor(this.bestFitness);
+							this.avgFitness = Math.floor(this.avgFitness / this.entities.length);
+
+							this.repopulate();
+						}
+					},
+					'repopulate': function() {
+						var idx, top, n;
+
+						n = this.end;
+
+						top = this.entities.sort(function(a, b) { return a.fitness(n) - b.fitness(n); }).slice(0, 15);
+
+						this.entities[0] = top[0].clone();
+
+						for(idx = 1; idx < this.entities.length; ++idx) {
+							this.entities[idx] = top[idx % top.length].mutate();
+						}
+					}
+				};
+
+				c = document.createElement('canvas');
+				ctx = c.getContext('2d');
+
+				game = new Game(window.innerWidth, window.innerHeight);
+
+				game.setCanvas(c);
+				game.setContext(ctx);
+
+				game.render();
+
+				document.body.appendChild(c);
+			});
+		</script>
+	</head>
+	<body>
+		<!-- -->
+	</body>
+</html>

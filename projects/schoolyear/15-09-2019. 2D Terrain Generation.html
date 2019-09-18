@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>2D Terrain Generation</title>
+		<style>
+			html {
+				display: table;
+				background-color: #334;
+				width: 100vw; height: 100vh;
+			}
+			body {
+				display: table-cell;
+				text-align: center;
+				vertical-align: middle;
+			}
+			canvas {
+				background-color: #EED;
+			}
+		</style>
+		<script>
+			// https://www.youtube.com/watch?v=C9X09Sw9XDA
+			window.addEventListener('DOMContentLoaded', function() {
+				'use strict';
+				var Random, rand;
+				var init, draw, x;
+				var canvas, context;
+
+				Random = function(m) {
+					var r;
+
+					m = m || 255;
+
+					for(r = [ ]; r.length < m; r.push(Math.random()));
+
+					return function(n) {
+						var e, f, g, _;
+						// I am calling it the Sigmoidic Noise
+						e = r[Math.floor(n) % r.length];
+						f = r[Math.floor(n + 1) % r.length];
+						g = 1 / (1 + Math.exp(4 - 8 * (n % 1)));
+						_ = e * (1 - g) + f * g;
+						return _;
+					};
+				};
+
+				canvas = document.querySelector('canvas') || document.createElement('canvas');
+				context = canvas.getContext('2d');
+
+				draw = function() {
+					var idx, y;
+
+					++x;
+
+					context.clearRect(0, 0, canvas.width, canvas.height);
+
+					for(idx = 0; idx < canvas.width; ++idx) {
+						y = canvas.height * 0.3 + 
+							 rand((idx + x) / canvas.width * 8) * canvas.height * 0.5 + 
+							 rand((idx + x) / canvas.width * 16) * canvas.height * 0.2 + 
+							 rand((idx + x) / canvas.width * 24) * canvas.height * 0.1;
+
+						context.fillStyle = '#09F';
+						context.fillRect(idx, 0, 1, y);
+						if(y * 0.5 < canvas.height * 0.32) {
+							context.fillStyle = '#EFF';
+							context.fillRect(idx, y, 1, canvas.height * 0.32 - y * 0.5);
+						}
+						context.fillStyle = '#556';
+						context.fillRect(idx, canvas.height * 0.32 - y * 0.5 + y, 1, canvas.height);
+					}
+
+					requestAnimationFrame(draw);
+				};
+
+				init = function(r) {
+					if(canvas.parentElement === null) document.body.appendChild(canvas);
+
+					canvas.width = 640;
+					canvas.height = 480;
+
+					x = 0;
+
+					draw();
+				};
+
+				rand = Random();
+				init();
+			});
+		</script>
+	</head>
+	<body>
+		<!-- -->
+	</body>
+</html>

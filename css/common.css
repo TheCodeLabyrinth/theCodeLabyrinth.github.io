@@ -1,0 +1,86 @@
+@import url('https://fonts.googleapis.com/css?family=Open+Sans+Condensed');
+
+html {
+    padding: 0 10vw;
+    font-family: 'Open Sans Condensed', sans-serif;
+}
+
+body {
+    padding-top: 22vh;
+    padding-bottom: 8vh;
+    background-color: #eeeeff;
+    color: #333343;
+}
+
+p::first-letter {
+    margin-left: 4px;
+}
+
+a {
+    text-decoration: none;
+    color: #333388;
+}
+
+#header, #footer {
+    position: fixed;
+    left: 0;
+    width: 100vw;
+    box-shadow: 0 0 8px #000000;
+}
+#header { top: 0; }
+#footer { bottom: 0; height: 6vh; }
+
+.scrolled body {
+    padding-top: 10vh;
+}
+.scrolled #header {
+    height: 10vh;
+}
+.scrolled #header:hover, #header {
+    transition: 0.125s height;
+    height: 20vh;
+}
+
+li {
+    font-size: 75%;
+}
+
+li a {
+    font-size: 133%;
+}
+
+.useless, .broken {
+    display: none;
+}
+.brokenShow .useless, .brokenShow .broken {
+    display: inline-block;
+    display: list-item;
+}
+
+.useless a {
+    color: #888833;
+}
+
+.broken a {
+    color: #883333;
+}
+
+.button {
+    background-color: #ccccdd;
+    border: dashed 1px #333343;
+    border-radius: 8px;
+    color: #333343;
+    padding: 4px 8px;
+    display: block;
+    text-align: center;
+    margin: 0 0 18px 2px;
+    cursor: pointer;
+}
+
+.button:hover {
+    background-color: #aaaabb;
+}
+
+.button:active {
+    margin: 2px 2px 18px 0;
+}

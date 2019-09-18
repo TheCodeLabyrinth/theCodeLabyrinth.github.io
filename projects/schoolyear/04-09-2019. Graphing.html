@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Math.js</title>
+		<style>
+			html {
+				background-color: #000;
+				display: table;
+				width: 100vw; height: 100vh;
+				overflow: hidden;
+			}
+			body {
+				display: table-cell;
+				text-align: center;
+				vertical-align: middle;
+			}
+			canvas, img {
+				background-color: #222;
+			}
+		</style>
+		<script>
+			window.addEventListener('DOMContentLoaded', function() {
+				// Example in ES6, for easy understanding and future implementation
+				class Vector {
+					constructor(x, y) {
+						this.x = x, this.y = y;
+					}
+					toString() {
+						return `(${this.x}, ${this.y})`;
+					}
+				}
+				Vector.domain = function(list) {
+					return list.map(vec => vec.x).sort((a, b) => a - b);
+				}, Vector.range = function(list) {
+					return list.map(vec => vec.x).sort((a, b) => a - b);
+				};
+
+				// Function (with caching)
+				class Vec2DFunction {
+					constructor(fX = null) {
+						if(fX === null) throw Error("Must pass f(x) as argument");
+						this.fX = fX;
+						this._cache = { };
+					}
+					run(x) {
+						if(!(x in this._cache)) {
+							this._cache[x] = new Vector(x, this.fX(x));
+						}
+						return this._cache[x];
+					 }
+				}
+				Vector.Function = Vec2DFunction;
+
+				// Coordinate plane (with OffscreenCanvas)
+				class CoordinatePlane {
+					constructor(minX = 0, minY = 0, maxX = 10, maxY = 10) {
+						this.minX = minX, this.minY = minY;
+						this.maxX = maxX, this.maxY = maxY;
+						this.xLen = this.maxX - this.minX;
+						this.yLen = this.maxY - this.minY;
+					}
+					draw(functionList = [ ], wid = 320, hei = 320) {
+						let canvas = new OffscreenCanvas(wid, hei);
+						let context = canvas.getContext('2d');
+
+						let frac = 24;
+
+						let scaleX = (wid * (frac - 1) / frac) / this.xLen,
+							scaleY = (hei * (frac - 1) / frac) / this.yLen;
+
+						context.fillStyle = '#AAB';
+						context.fillRect(0, 0, wid, hei);
+
+						for(let x = 0; x < this.xLen; ++x) {
+							for(let y = 0; y < this.yLen; ++y) {
+								context.beginPath();
+								context.lineWidth = 1;
+								context.fillStyle = '#eee';
+								context.strokeStyle = '#445';
+								context.rect(wid / frac + x * scaleX, y * scaleY, scaleX, scaleY);
+								context.fill();
+								context.stroke();
+
+								context.fillStyle = '#334';
+								context.font = Math.floor(wid / frac / 3) + 'px monospace';
+								context.fillText(this.yLen - y + this.minY, wid / frac / 2, y * scaleY);
+							}
+
+							context.fillStyle = '#334';
+							context.font = Math.floor(wid / frac / 3) + 'px monospace';
+							context.fillText(x + this.minX, wid / frac + x * scaleX, hei * (frac - 0.5) / frac);
+						}
+
+						context.beginPath();
+						context.lineWidth = 3;
+						context.strokeStyle = '#334';
+						context.moveTo(wid / frac + scaleX * (this.xLen + this.minX), 0);
+						context.lineTo(wid / frac + scaleX * (this.xLen + this.minX), hei * (frac - 1) / frac);
+						context.stroke();
+
+						context.beginPath();
+						context.lineWidth = 3;
+						context.strokeStyle = '#334';
+						context.moveTo(wid / frac, scaleY * (this.yLen + this.minY));
+						context.lineTo(wid, scaleY * (this.yLen + this.minY));
+						context.stroke();
+
+						functionList.forEach((func, index) => {
+							context.strokeStyle = ([ '#009', '#090', '#900', '#990', '#099', '#909' ])[index % 6];
+							if(func instanceof Vector.Function) {
+								context.beginPath();
+								context.lineWidth = 3;
+								for(let x = 0; x < this.xLen; x += this.xLen / wid) {
+									let f = x === 0 ? 'moveTo' : 'lineTo';
+									let v = func.run(x + this.minX);
+									context[f](wid / frac + x * scaleX, (hei * (frac - 1) / frac) - (v.y - this.minY) * scaleY);
+								}
+								context.stroke();
+							} else {
+								context.beginPath();
+								context.arc(wid / frac + (func.x - this.minX) * scaleX, (hei * (frac - 1) / frac) - (func.y - this.minY) * scaleY, 4, 0, Math.PI * 2, false);
+								context.fill();
+								context.stroke();
+							}
+						});
+
+						return canvas;
+					}
+				}
+				let coordplane = new CoordinatePlane(-10, -10, 10, 10);
+
+				coordplane.draw([
+					new Vector.Function(x => Math.exp(x)),
+					new Vector.Function(x => Math.exp(x)),
+					new Vector(4, 6)
+				], 960, 540).convertToBlob().then(blob => {
+					let reader = new FileReader();
+
+					reader.addEventListener('load', function() {
+						let image = document.createElement('img');
+						image.src = this.result;
+
+						document.body.appendChild(image);
+					});
+
+					reader.readAsDataURL(blob);
+				}).catch(err => {
+					alert(err.message + '\n\t' + err.lineno + '.' + err.colno);
+				});
+			});
+		</script>
+	</head>
+	<body>
+		<!-- -->
+	</body>
+</html>

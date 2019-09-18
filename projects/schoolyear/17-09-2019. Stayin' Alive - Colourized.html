@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stayin' Alive</title>
+		<style>
+			html {
+				display: table;
+				background-color: #eeeeee;
+				width: 100vw;
+				height: 100vh;
+			}
+			body {
+				display: table-cell;
+				text-align: center;
+				vertical-align: middle;
+			}
+			canvas {
+				border: dashed 1px #000000;
+			}
+		</style>
+		<script>addEventListener('error',err=>alert(err.message+'\n\t'+err.lineno))
+			// Wait until the DOM (document.body and such) is loaded and parsed
+			// Then run an anonomous function, because I don't like global variables
+			window.addEventListener('DOMContentLoaded', function() {
+				// I always use strict mode, it's just a preference, you can ignore it
+				'use strict';
+				// Defining variables
+				var Square;
+				var squares, canvas, context, frame, speed;
+
+				// Define the Square class
+				Square = function(data, isData, col, x, y) {
+					// Store position and speed
+					this.pos = [ x, y ];
+					this.vel = [ 0, 0 ];
+
+					// Original position for next generation's use
+					this.ogP = [ x, y ];
+
+					// Are we dead yet?
+					this.dead = false;
+
+					// Genetic Colour Management!
+					this.colour = col;
+
+					// How long have we lived?
+					this.life = 0;
+
+					// Width of Square
+					this.w = 12;
+
+					// Store the brain
+					this.brain = [ ];
+
+					if(isData) {
+						// If we give it a 'brain' as an argument and tell it so
+						this.brain = data;
+					} else {
+						while(this.brain.length < data) {
+							// Otherwise generate a 'brain'
+							this.brain.push(Math.random() * Math.PI * 2);
+						}
+					}
+
+					this.ang = this.brain[0];
+				}, Square.prototype = {
+					'update': function(canvas) {
+						var dead;
+
+						// Death?
+						dead = this.isDead(canvas);
+
+						// Your alive? Good.
+						if(!dead) {
+							// Add current movement speed, velocity, to position
+							this.pos[0] += this.vel[0];
+							this.pos[1] += this.vel[1];
+
+							// Add acceleration angle, converted to vector with cos( ... ) and sin( ... )
+							this.vel[0] += Math.cos(this.ang);
+							this.vel[1] += Math.sin(this.ang);
+
+							// Apply next angle and increase age
+							++this.life;
+							this.ang = this.brain[this.life];
+						}
+
+						return dead;
+					},
+					'isDead': function(canvas) {
+						// About a million ways this could be optimized
+						// Actually more like three
+						this.dead = this.dead || this.pos[0] < this.w || this.pos[0] > canvas.width - this.w;
+						this.dead = this.dead || this.pos[1] < this.w || this.pos[1] > canvas.height - this.w;
+
+						return this.dead;
+					},
+					'clone': function() {
+						// Make a copy of this square
+						return (new Square(
+							// This is an efficient enough way to clone an array
+							Object.assign([ ], this.brain),
+							// A boolean variable
+							true,
+							// Genetic colour
+							this.colour,
+							// and a starting position
+							this.ogP[0], this.ogP[1]
+						));
+					},
+					'mutate': function(rate) {
+						var mutation, idx;
+
+						// Clone
+						mutation = this.clone();
+
+						// Mutate
+						for(idx = 0; idx < mutation.brain.length; ++idx) {
+							// (rate*100) + '% of the time'
+							if(Math.random() > rate) continue;
+							mutation.brain[idx] = Math.random();
+						}
+
+						return mutation;
+					},
+					'fitness': function() {
+						// How well the square did
+						// In this case, survive as long as possible
+						return this.life;
+					},
+					'render': function(ctx) {
+						// Starting working on a shape
+						ctx.beginPath();
+						// Paintbrush Colour: Blue
+						ctx.fillStyle = 'rgb(' + [
+							(this.colour >> 16) % 255,
+							(this.colour >>  8) % 255,
+							(this.colour >>  0) % 255
+						].join(', ') + ')';
+						// Draw a rectangle with...
+						ctx.rect(
+							this.pos[0] - this.w / 2, // Top-Left X Position
+							this.pos[1] - this.w / 2, // Inverted-Y Position*
+							this.w, // Width of rectangle
+							this.w // Height of rectangle
+						);
+						// Fill and outline
+						ctx.fill();
+						ctx.stroke();
+						// *The Y axis is flipped, so Y=0 is the top
+						// and Y=HEIGHT is the bottom. It takes some
+						// getting used to but just don't get into the
+						// habbit of doing height - y in the field
+						// designated, because that is going to hurt
+						// performance in the long room (at least...
+						// it did when I had a Pentium 4 with the
+						// integrated graphics of the day...)
+					}
+				};
+
+				// Using querySelector is the same as using CSS selectors
+				// querySelectorAll gives an array-like object, a list
+				// querySelector just returns the first matching element
+				canvas = document.querySelector('canvas');
+
+				// Canvas2DRenderingContext, the paintbrush essentially
+				// Used to draw on the screen
+				context = canvas.getContext('2d'); // No, 3D does not work
+				// If you want 3D, you have to write a 3D Engine and probably
+				// will have to use webGL for reasonable performance. Essentially
+				// you would be writing GPU code the same way as you would be
+				// in C or C++ without a library.
+
+				// The first Generation of Squares
+				// Randomized brains, just try shit
+				// and hope it works (essentially
+				// what I am doing right now)
+				squares = Array.from({
+					'length': 512 // 512 Squares
+				}, function(u, idx) {
+					return (new Square(
+						1536, false, // 1536 frames worth of "planning"
+						0x990000,
+						canvas.width / 2, canvas.height / 2 // Center of screen
+					));
+				});
+
+				// Frame function, run this ~60fps
+				frame = function() {
+					var idx, j, totalDead;
+
+					// Paintbrush colour white
+					context.fillStyle = '#ffffff';
+					context.fillRect(0, 0, canvas.width, canvas.height);
+
+					// Death Count
+					totalDead = 0;
+
+					// Loop through each square
+					for(idx = 0; idx < squares.length; ++idx) {
+						// Update position and shit, doing it ${speed} times in a frame
+						for(j = 0; j < speed; ++j) {
+							// Also count how many are dead
+							totalDead += squares[idx].update(canvas);
+						}
+						squares[idx].render(context);
+					}
+
+					// If they all die,
+					if(totalDead / speed === squares.length) {
+						var fittest, amount, mutationRate, i;
+						// Repopulate the square army
+
+						mutationRate = 3e-2; // 0.03
+						amount = 5;
+						fittest = squares.sort(function(a, b) {
+							// Sort largest to smallest, if
+							// return is more than one, move to
+							// the right. If less than, to the
+							// left. If the same, keep as is.
+							return b.fitness() - a.fitness();
+						}).slice(0, amount);
+
+						// via Survival of the fittest
+						squares = Array.from({ 'length': squares.length }, function(_, index) {
+							return fittest[index % amount].mutate(mutationRate);
+						});
+
+						// And keep the top 5 from previous generation around.
+						// That way, if every single mutation is for the worse,
+						// the same five continue mutating. Technically this is
+						// not part of natural evolution, but eh, this isn't natural.
+						for(i = 0; i < amount; ++i) squares[i] = fittest[i];
+					}
+
+					requestAnimationFrame(frame);
+				};
+
+				speed = 1;
+
+				// Compatability for old browsers
+				window.requestAnimationFrame = 
+					window.requestAnimationFrame || // Modern
+					window.webkitRequestAnimationFrame || // Old Chrome/Safari
+					window.mozRequestAnimationFrame || // Old Firefox
+					window.oRequestAnimationFrame || // Old Opera
+					function(f) { setTimeout(f, 16); }; // Obscure 2011 half-completed browsers
+
+				window.addEventListener('keydown', function(evt) {
+					if('0123456789'.match(evt.key)) {
+						speed = Number.parseInt(evt.key) * 20 + 1;
+					}
+				});
+
+				// And this is what starts the process
+				frame(); // Charge!!! Oh shit I'm died nevermind
+			});
+		</script>
+	</head>
+	<body>
+		<!-- Canvas is where it gets displayed -->
+		<canvas width='640' height='480'></canvas>
+	</body>
+</html>

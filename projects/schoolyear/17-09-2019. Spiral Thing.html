@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Spiral Thing</title>
+		<style>
+			html {
+				background-color: #ddddff;
+				color: #333343;
+				display: table;
+				width: 100vw;
+				height: 100vh;
+			}
+			body {
+				vertical-align: middle;
+				text-align: center;
+				display: table-cell;
+			}
+			canvas {
+				border: dashed 1px #000000;
+			}
+		</style>
+		<script>
+			window.addEventListener('DOMContentLoaded', function() {
+				'use strict';
+				var canvas, context, frame, idx;
+
+				canvas = document.querySelector('canvas');
+				context = canvas.getContext('2d');
+
+				idx = 0;
+
+				frame = function() {
+					var x, y, i;
+
+					for(i = 1024; -- i; ) {
+						x = Math.cos(idx / canvas.width) * (canvas.width / 2 - idx / (canvas.width * 2)) + canvas.width / 2;
+						y = Math.sin(idx / canvas.width) * (canvas.width / 2 - idx / (canvas.width * 2)) + canvas.height / 2;
+
+						++idx;
+
+						context.fillStyle = 'rgb(' + [
+							(idx << 16) % 255,
+							(idx <<  8) % 255,
+							(idx <<  0) % 255
+						].join(', ') + ')';
+						context.fillRect(x, y, 1, 1);
+					}
+
+					requestAnimationFrame(frame);
+				};
+
+				frame();
+			});
+		</script>
+	</head>
+	<body>
+		<canvas width='480' height='480'></canvas>
+	</body>
+</html>

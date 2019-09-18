@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Calculate Linear Line from Points</title>
+		<style>
+			html {
+				background-color: #000;
+				display: table;
+				width: 100vw; height: 100vh;
+				overflow: hidden;
+			}
+			body {
+				display: table-cell;
+				text-align: center;
+				vertical-align: middle;
+			}
+			canvas {
+				background-color: #FFF;
+				max-width: 100vw; max-height: 100vh;
+			}
+		</style>
+		<script>
+			window.addEventListener("DOMContentLoaded", function() {
+				"use strict";
+				var cvs, ctx, sX, sY;
+				var points, wid, hei;
+				var render, fitLine;
+				var pdX, pdY;
+
+				// Change these for your equation
+				points = [
+					[ 19.00, 10.35 ],
+					[ 19.50, 10.30 ],
+					[ 20.00, 10.25 ],
+					[ 20.50, 10.20 ],
+					[ 21.00, 10.10 ],
+					[ 22.00,  9.85 ],
+					[ 22.50,  9.80 ],
+					[ 23.00,  9.79 ],
+					[ 23.50,  9.70 ],
+					[ 24.00,  9.60 ]
+				];
+
+				// This calculates the best fit line
+				fitLine = function() {
+					var m, ml, mt, x, x2, b;
+
+					ml = 0, m = 0, b = 0;
+
+					for(x = 0; x < points.length; ++x) {
+						for(x2 = 0; x2 < points.length; ++x2) {
+							if(x2 === x) continue;
+
+							++ml;
+							mt = (points[x2][1] - points[x][1]) / (points[x2][0] - points[x][0]);
+
+							if(mt === mt) m += mt;
+						}
+					}
+
+					m /= ml;
+
+					for(x = 0; x < points.length; ++x) {
+						b += points[x][1] - points[x][0] * m;
+					}
+
+					b /= points.length;
+
+					return [ m, b ];
+				};
+
+				// This tells the program where on the graph to display
+				pdX = 10;
+				pdY = 5;
+				wid = 20;
+				hei = 10;
+
+				// Everything else below purely for rendering
+
+				cvs = document.querySelector('canvas');
+				ctx = cvs.getContext('2d');
+
+				sX = cvs.width / wid;
+				sY = cvs.height / hei;
+
+				render = function() {
+					var idx, w, m, b;
+
+					ctx.strokeStyle = '#DDD';
+
+					for(idx = 0; idx < wid; ++idx) {
+						for(w = 0; w < hei; ++w) {
+							ctx.strokeRect(idx * sX, w * sY, sX, sY);
+						}
+					}
+
+					w = 3;
+
+					for(idx = 0; idx < points.length; ++idx) {
+						ctx.fillRect((points[idx][0] - pdX) * sX - w, cvs.height - (points[idx][1] - pdY) * sY - w, w * 2, w * 2);
+					}
+
+					ctx.fillStyle = '#090';
+
+					m = fitLine(), b = m[1], m = m[0];
+
+					for(idx = pdX; idx < pdX + wid; idx += 0.25) {
+						ctx.fillRect((idx - pdX) * sX - w, cvs.height - ((idx) * m + b - pdY) * sY - w, w, w);
+					}
+
+					ctx.fillStyle = '#ccc';
+					ctx.fillRect(0, 0, 160, 100);
+					ctx.fillStyle = '#000';
+					ctx.font = '16px Ubuntu';
+					ctx.fillText('Bottom Left: (' + [ pdX, pdY ] + ')', 16, 20);
+					ctx.fillText('Top Right: (' + [ pdX + wid, pdY + hei ] + ')', 16, 40);
+					ctx.fillText('m: ' + m.toFixed(5), 16, 70);
+					ctx.fillText('b: ' + b.toFixed(5), 16, 90);
+				};
+
+				render();
+			});
+			window.addEventListener(function(err) {
+				alert(err.message + "\n\t" + err.lineno + "." + err.colno);
+			});
+		</script>
+	</head>
+	<body>
+		<canvas width='640' height='480'></canvas>
+	</body>
+</html>

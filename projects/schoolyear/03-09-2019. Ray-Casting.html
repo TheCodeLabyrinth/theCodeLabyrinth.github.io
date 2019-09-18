@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Ray Casting Screensaver</title>
+		<style>
+			html {
+				background-color: #000;
+				display: table;
+				width: 100vw; height: 100vh;
+				overflow: hidden;
+			}
+			body {
+				display: table-cell;
+				text-align: center;
+				vertical-align: middle;
+			}
+			canvas {
+				background-color: #222;
+				width: 100vw;
+				height: 100vh;
+			}
+		</style>
+		<script>
+			window.addEventListener('DOMContentLoaded', function() {
+				var cvs, ctx, wid, hei, kb, worldWid, worldHei;
+				var map, pos, frame, vel, castRay, key;
+
+				cvs = document.createElement('canvas');
+				ctx = cvs.getContext('2d');
+
+				wid = window.innerWidth, hei = window.innerHeight;
+
+				worldWid = 32, worldHei = 32;
+
+				cvs.width = wid, cvs.height = hei;
+
+				map = Array.from({ 'length': worldHei }, function(u, y) {
+					return Array.from({ 'length': worldWid }, function(u, x) {
+						return (
+							x === 0 || x === worldWid - 1 || y === 0 || y === worldHei - 1
+						) ? [ 9, 9, 9 ] : Math.random() > 0.1 ? [ 0, 0, 0 ] : [
+							(Math.random() * 5 + 2) | 0,
+							(Math.random() * 5 + 2) | 0,
+							(Math.random() * 5 + 2) | 0
+						];
+					});
+				}), pos = [
+					worldWid / 2 | 0,
+					worldHei / 2 | 0, 0
+				], vel = 0.1;
+
+				fov = Math.PI / 2;
+
+				kb = [ false, false, false, false, false ];
+
+				frame = function() {
+					var col, val, mult;
+					var x, y, scale, h;
+
+					ctx.clearRect(0, 0, wid, hei);
+
+					for(col = 0; col < wid; ++col) {
+						val = castRay(fov * col / wid - fov / 2);
+
+						mult = 16;
+
+						h = Math.min(mult * val[1][0], hei / 2);
+
+						ctx.fillStyle = '#09F';
+						ctx.fillRect(col, 0, 1, h - 1);
+						ctx.fillStyle = '#' + val[0].join('');
+						ctx.fillRect(col, h, 1, hei - h * 2);
+						ctx.fillStyle = '#090';
+						ctx.fillRect(col, hei - h + 1, 1, h);
+					}
+
+					if(kb[4]) {
+						scale = 12;
+
+						for(y = 0; y < map.length; ++y) {
+							for(x = 0; x < map[y].length; ++x) {
+								ctx.fillStyle = '#' + map[y][x].join('');
+								ctx.fillRect(x * scale, y * scale, scale, scale);
+							}
+						}
+						ctx.fillStyle = '#567';
+						ctx.fillRect(pos[0] * scale + 3, pos[1] * scale + 3, scale - 6, scale - 6);
+					}
+
+					pos[0] += Math.cos(pos[2]) * ((kb[2] ? vel : 0) + (kb[3] ? -vel : 0));
+					pos[1] += Math.sin(pos[2]) * ((kb[2] ? vel : 0) + (kb[3] ? -vel : 0));
+					pos[2] += ((kb[0] ? vel : 0) + (kb[1] ? -vel : 0)) / 2;
+
+					requestAnimationFrame(frame);
+				}, castRay = function(ang) {
+					var x, y, xInc, yInc, tile;
+
+					x = pos[0], y = pos[1];
+
+					xInc = Math.cos(ang + pos[2]);
+					yInc = Math.sin(ang + pos[2]);
+
+					while(y < map.length - 1 && y | 0 > 0 && x < map[0].length - 1 && x | 0 > 0) {
+						x += xInc / 8;
+						y += yInc / 8;
+
+						tile = map[y | 0][x | 0];
+
+						if(tile[0] !== 0 || tile[1] !== 0)
+							return [ tile, [ Math.cos(ang) * Math.sqrt(
+								(x - pos[0]) * (x - pos[0]) +
+								(y - pos[1]) * (y - pos[1])
+							), [ x, y ] ] ];
+					}
+				};
+
+				key = function(keyCode) {
+					var k;
+
+					switch(keyCode) {
+						case 83:
+						case 40:
+							k = 3;
+							break;
+						case 87:
+						case 38:
+							k = 2;
+							break;
+						case 65:
+						case 37:
+							k = 1;
+							break;
+						case 68:
+						case 39:
+							k = 0;
+							break;
+						case 32:
+							k = 4;
+							break;
+					}
+
+					return (typeof k === 'number' ? k : null);
+				};
+				
+				window.addEventListener('keydown', function(evt) {
+					var k;
+
+					k = key(evt.keyCode);
+					if(k !== null) kb[k] = true;
+				});
+				window.addEventListener('keyup', function(evt) {
+					var k;
+
+					k = key(evt.keyCode);
+					if(k !== null) kb[k] = false;
+				});
+
+				frame();
+
+				document.body.appendChild(cvs);
+			});
+		</script>
+	</head>
+	<body>
+		<!-- -->
+	</body>
+</html>

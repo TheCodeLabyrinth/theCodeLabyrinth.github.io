@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Mandelbrot Rendering</title>
+		<style>
+			html {
+				background-color: #000;
+				display: table;
+				width: 100vw; height: 100vh;
+				overflow: hidden;
+			}
+			body {
+				display: table-cell;
+				text-align: center;
+				vertical-align: middle;
+			}
+			canvas, img {
+				background-color: #222;
+				max-width: 100vw; max-height: 100vh;
+			}
+		</style>
+		<script>
+			window.addEventListener('DOMContentLoaded', function() {
+				let iter = (cx, cy, maxIter) => {
+					let x = 0.0, y = 0.0, xx = 0, yy = 0, xy = 0, i = maxIter;
+					while(i-- && xx + yy <= 4) {
+						xy = x * y;
+						xx = x * x;
+						yy = y * y;
+						x = xx - yy + cx;
+						y = xy + xy + cy;
+					}
+					return maxIter - i;
+				};
+
+				let cvs = document.querySelector('canvas'),
+					ctx = cvs.getContext('2d');
+
+				let x = 0, y = 0;
+
+				let draw = function() {
+					let imgData = ctx.getImageData(0, 0, cvs.width, cvs.height);
+
+					for(let i = 0; i < cvs.width; i++) {
+						let val = iter((x / cvs.width - 0.6) * 4, (y / cvs.height - 0.5) * 4, 32);
+						imgData.data[4 * (x + y * cvs.width) + 0] = val * 32 % 255;
+						imgData.data[4 * (x + y * cvs.width) + 1] = val * 16 % 255;
+						imgData.data[4 * (x + y * cvs.width) + 2] = val * 8 % 255;
+						imgData.data[4 * (x + y * cvs.width) + 3] = 255;
+
+						ctx.putImageData(imgData, 0, 0);
+
+						if(++x >= cvs.width) x = 0, ++y;
+						if(y >= cvs.height) return;
+					}
+
+					requestAnimationFrame(draw);
+				};
+
+				draw();
+			});
+		</script>
+	</head>
+	<body>
+		<canvas width='320' height='240'></canvas>
+	</body>
+</html>

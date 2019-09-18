@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Visualization of BubbleSort</title>
+		<style>
+			html {
+				background-color: #000;
+				display: table;
+				width: 100vw; height: 100vh;
+				overflow: hidden;
+			}
+			body {
+				display: table-cell;
+				text-align: center;
+				vertical-align: middle;
+			}
+			canvas {
+				background-color: #FFF;
+				max-width: 100vw; max-height: 100vh;
+			}
+		</style>
+		<script>
+			window.addEventListener('DOMContentLoaded', function() {
+				'use strict';
+				var cvs, ctx;
+				var wid, hei;
+				var inf, col;
+				var drawBars;
+				var doUpdate;
+				var tempData;
+
+				col = function(n) {
+					var r, g, b;
+
+					n = Math.floor(((1 << 24) * Math.abs(n / hei)));
+
+					r = (n >> 8) & 256;
+					g = (n >> 4) & 256;
+					b = (n >> 2) & 256;
+
+					return 'rgb(' + r + ', ' + g + ', ' + b + ')';
+				};
+
+				inf = [ ];
+
+				wid = 1280;
+				hei = 128;
+
+				while(inf.length < wid) {
+					inf.push(Math.random() * hei)
+				}
+
+				cvs = document.createElement('canvas');
+				ctx = cvs.getContext('2d');
+
+				cvs.width = wid;
+				cvs.height = hei;
+
+				drawBars = function() {
+					var x;
+					ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+					for(x = 0; x < inf.length; ++x) {
+						ctx.fillStyle = (x === tempData.i) ?
+							'rgb(0, 0, 0)' : (x === tempData.j) ? 
+								'rgb(192, 192, 192)' :
+								'rgb(255, 255, 255)';
+						ctx.fillRect(x, 0, 1, inf[x]);
+						ctx.fillStyle = col(inf[x]);
+						ctx.fillRect(x, inf[x], 1, hei - inf[x]);
+					}
+
+					doUpdate();
+
+					requestAnimationFrame(drawBars);
+				};
+
+				doUpdate = function() {
+					var temp;
+
+					if(inf[tempData.i] > inf[tempData.m]) {
+						tempData.m = tempData.i;
+					}
+
+					++tempData.i;
+
+					if(tempData.i > wid) {
+						temp = inf[tempData.j];
+						inf[tempData.j] = inf[tempData.m];
+						inf[tempData.m] = temp;
+
+						tempData.i = ++tempData.j;
+					}
+				};
+
+				tempData = { 'm': 0, 'i': 0, 'j': 0 };
+
+				drawBars();
+
+				document.body.appendChild(cvs);
+			});
+		</script>
+	</head>
+	<body>
+		<!-- -->
+	</body>
+</html>
