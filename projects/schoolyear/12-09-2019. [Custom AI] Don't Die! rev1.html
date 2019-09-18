@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 	<head>
@@ -22,9 +23,6 @@
 		</style>
 		<script>
 			// kill me now
-			window.addEventListener('error', function(err) {
-				alert(err.message + '\n\t' + err.lineno + '.' + err.colno + '\n\t' + err.filename);
-			});
 			window.addEventListener('DOMContentLoaded', function() {
 				'use strict';
 				var Thing, Wall, Destination, Game;
@@ -40,9 +38,11 @@
 							break;
 						case 'arrowleft': case 'a':
 							--speed;
-							break;
+							speed = Math.max(1, speed);
+							breakk;
 						case 'arrowup': case 'w':
 							variation *= 10;
+							variation = Math.min(1, variation);
 							break;
 						case 'arrowdown': case 's':
 							variation /= 10;
